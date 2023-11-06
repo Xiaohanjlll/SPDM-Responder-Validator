@@ -951,6 +951,68 @@ void spdm_test_case_measurements_success_10_11_12 (void *test_context, uint8_t v
         measurement_record_size = measurement_record_length;
         measurement_block_count = spdm_response->number_of_blocks;
 
+        uint16_t measurement_size;
+        uint8_t *test_measurement_record = (void *)(spdm_response + 1);
+
+        spdm_measurement_block_dmtf_t *measurement_block_dmtf;
+        test_measurement_record = (void *)(spdm_response + 1);
+
+        for (size_t index = 0; index < spdm_response->number_of_blocks; index++) {
+            measurement_block_dmtf = (spdm_measurement_block_dmtf_t *)test_measurement_record;
+
+            /* SPDM_MEASUREMENT_BLOCK_MEASUREMENT_TYPE_DEVICE_MODE 5
+             * When DMTFSpecMeasurementValueType[6:0]=0x5 , DMTFSpecMeasurementValueType[7] shall be set to 1b .*/
+            if(measurement_block_dmtf->measurement_block_dmtf_header.
+               dmtf_spec_measurement_value_type ==
+               SPDM_MEASUREMENT_BLOCK_MEASUREMENT_TYPE_IMMUTABLE_ROM) {
+                if ((measurement_block_dmtf->measurement_block_dmtf_header.
+                     dmtf_spec_measurement_value_type ^
+                     SPDM_MEASUREMENT_BLOCK_MEASUREMENT_TYPE_IMMUTABLE_ROM) != 0 ) {
+                    test_result = COMMON_TEST_RESULT_PASS;
+                } else {
+                    test_result = COMMON_TEST_RESULT_FAIL;
+                }
+            }
+
+            /* SPDM_MESSAGE_VERSION_13
+             * When DMTFSpecMeasurementValueType[6:0]=0x8 , DMTFSpecMeasurementValueType[7] shall be set to 0b */
+            if(measurement_block_dmtf->measurement_block_dmtf_header.
+               dmtf_spec_measurement_value_type == 0x8) {
+                if ((measurement_block_dmtf->measurement_block_dmtf_header.
+                     dmtf_spec_measurement_value_type ^ 0x8) != 0b10000000 ) {
+                    test_result = COMMON_TEST_RESULT_PASS;
+                } else {
+                    test_result = COMMON_TEST_RESULT_FAIL;
+                }
+            }
+
+            /*When DMTFSpecMeasurementValueType[6:0]=0x9 , DMTFSpecMeasurementValueType[7] shall be set to 1b */
+            if(measurement_block_dmtf->measurement_block_dmtf_header.
+               dmtf_spec_measurement_value_type == 0x9) {
+                if ((measurement_block_dmtf->measurement_block_dmtf_header.
+                     dmtf_spec_measurement_value_type ^ 0x9) != 0 ) {
+                    test_result = COMMON_TEST_RESULT_PASS;
+                } else {
+                    test_result = COMMON_TEST_RESULT_FAIL;
+                }
+            }
+
+            common_test_record_test_assertion (
+                SPDM_RESPONDER_TEST_GROUP_MEASUREMENTS, case_id, COMMON_TEST_ID_END,
+                COMMON_TEST_RESULT_NOT_TESTED, "DMTFSpecMeasurementValueType ERROR");
+
+            if (test_result == COMMON_TEST_RESULT_FAIL) {
+                return;
+            }
+
+            measurement_size =
+                ((spdm_measurement_block_common_header_t *)test_measurement_record)->
+                measurement_size;
+            test_measurement_record =
+                (void *)((size_t)test_measurement_record +
+                         sizeof(spdm_measurement_block_common_header_t) +
+                         measurement_size);
+        }
         
         result = spdm_test_measurement_calc_summary_hash (test_buffer->version,
                                                             test_buffer->hash_algo,
